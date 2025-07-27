@@ -1,0 +1,9 @@
+{
+  "name": "com.everythingeverywhere.host",
+  "description": "EverythingEverywhere Native Messaging Host",
+  "path": "G:\\Claude\\NathenAPP\\EE\\native-host\\native_host.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://efcfceeikhofdfgdgjgjkphbhcnfgmim/"
+  ]
+}

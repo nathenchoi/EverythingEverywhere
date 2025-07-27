@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 10px 0;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+    .status.active {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .status.error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    .info {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 EverythingEverywhere</h1>
+  <div id="status" class="status">
+    상태 확인 중...
+  </div>
+  <div class="info">
+    텍스트를 선택하고 우클릭하여<br>
+    "로컬에서 Everything으로 검색하기"를<br>
+    선택하세요.
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
