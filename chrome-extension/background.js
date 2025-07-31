@@ -28,10 +28,6 @@ function searchInEverything(searchText) {
   chrome.storage.sync.get(['copyToClipboard'], (result) => {
     const copyEnabled = result.copyToClipboard !== undefined ? result.copyToClipboard : true;
     
-    if (copyEnabled) {
-      copyToClipboard(searchText);
-    }
-    
     // Native Messaging Host로 메시지 전송
     chrome.runtime.sendNativeMessage(
       NATIVE_HOST_NAME,
@@ -53,9 +49,10 @@ function searchInEverything(searchText) {
           console.log('Native response:', response);
           if (response && response.success) {
             console.log('Everything search launched successfully');
-            // 성공 시 클립보드 복사 알림 (복사 기능이 활성화된 경우에만)
+            
+            // 검색 성공 후 클립보드 복사 실행 (설정에 따라)
             if (copyEnabled) {
-              showClipboardNotification(searchText);
+              performClipboardCopy(searchText);
             } else {
               // 복사 기능이 비활성화된 경우 간단한 성공 알림
               chrome.notifications.create({
@@ -73,66 +70,135 @@ function searchInEverything(searchText) {
 }
 
 // 클립보드에 텍스트 복사 (Service Worker 환경에서 작동)
-function copyToClipboard(text) {
-  // Service Worker에서는 navigator.clipboard를 직접 사용할 수 없으므로
-  // content script를 통해 클립보드에 복사
+function performClipboardCopy(text) {
+  console.log('클립보드 복사 시작:', text);
+  
+  // 활성 탭 찾기
   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-    if (tabs[0]) {
-      chrome.scripting.executeScript({
-        target: { tabId: tabs[0].id },
-        func: async (textToCopy) => {
-          try {
-            // 모던 브라우저의 Clipboard API 시도
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              await navigator.clipboard.writeText(textToCopy);
-              console.log('클립보드 복사 성공 (Clipboard API):', textToCopy);
+    if (chrome.runtime.lastError) {
+      console.error('탭 쿼리 오류:', chrome.runtime.lastError);
+      showSimpleNotification('클립보드 복사 실패', '활성 탭을 찾을 수 없습니다.');
+      return;
+    }
+    
+    if (!tabs || !tabs[0]) {
+      console.error('활성 탭이 없음');
+      showSimpleNotification('클립보드 복사 실패', '활성 탭을 찾을 수 없습니다.');
+      return;
+    }
+    
+    const activeTab = tabs[0];
+    console.log('활성 탭 찾음:', activeTab.id, activeTab.url);
+    
+    // content script 주입하여 클립보드 복사
+    chrome.scripting.executeScript({
+      target: { tabId: activeTab.id },
+      func: (textToCopy) => {
+        console.log('Content script 실행, 복사할 텍스트:', textToCopy);
+        
+        // Method 1: 모던 Clipboard API 시도
+        if (navigator.clipboard && window.isSecureContext) {
+          return navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+              console.log('Clipboard API 성공');
               return { success: true, method: 'clipboard-api' };
-            } else {
-              throw new Error('Clipboard API not available');
-            }
-          } catch (err) {
-            console.log('Clipboard API 실패, fallback 시도:', err);
+            })
+            .catch((err) => {
+              console.log('Clipboard API 실패:', err);
+              // Method 2: execCommand fallback
+              return new Promise((resolve) => {
+                try {
+                  const textarea = document.createElement('textarea');
+                  textarea.value = textToCopy;
+                  textarea.style.position = 'fixed';
+                  textarea.style.left = '-9999px';
+                  textarea.style.top = '-9999px';
+                  document.body.appendChild(textarea);
+                  textarea.focus();
+                  textarea.select();
+                  
+                  const success = document.execCommand('copy');
+                  document.body.removeChild(textarea);
+                  
+                  console.log('execCommand 결과:', success);
+                  resolve({ 
+                    success: success, 
+                    method: success ? 'exec-command' : 'failed',
+                    error: success ? null : 'execCommand returned false'
+                  });
+                } catch (execErr) {
+                  console.error('execCommand 오류:', execErr);
+                  resolve({ success: false, method: 'failed', error: execErr.message });
+                }
+              });
+            });
+        } else {
+          console.log('Clipboard API 불가능, execCommand 시도');
+          // Clipboard API가 없으면 바로 execCommand 시도
+          try {
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
             
-            // Fallback: document.execCommand 방식
-            try {
-              const textarea = document.createElement('textarea');
-              textarea.value = textToCopy;
-              textarea.style.position = 'fixed';
-              textarea.style.opacity = '0';
-              document.body.appendChild(textarea);
-              textarea.select();
-              
-              const success = document.execCommand('copy');
-              document.body.removeChild(textarea);
-              
-              if (success) {
-                console.log('클립보드 복사 성공 (execCommand):', textToCopy);
-                return { success: true, method: 'exec-command' };
-              } else {
-                throw new Error('execCommand failed');
-              }
-            } catch (fallbackErr) {
-              console.error('클립보드 복사 완전 실패:', fallbackErr);
-              return { success: false, error: fallbackErr.message };
-            }
-          }
-        },
-        args: [text]
-      }, (results) => {
-        if (chrome.runtime.lastError) {
-          console.error('스크립트 주입 실패:', chrome.runtime.lastError);
-        } else if (results && results[0]) {
-          const result = results[0].result;
-          if (result && result.success) {
-            console.log(`클립보드 복사 성공 (${result.method}):`, text);
-          } else {
-            console.error('클립보드 복사 실패:', result?.error || 'Unknown error');
+            const success = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            console.log('execCommand 결과 (직접):', success);
+            return Promise.resolve({ 
+              success: success, 
+              method: success ? 'exec-command-direct' : 'failed',
+              error: success ? null : 'execCommand returned false'
+            });
+          } catch (execErr) {
+            console.error('execCommand 오류 (직접):', execErr);
+            return Promise.resolve({ success: false, method: 'failed', error: execErr.message });
           }
         }
-      });
-    } else {
-      console.error('활성 탭을 찾을 수 없음');
-    }
+      },
+      args: [text]
+    }, (results) => {
+      if (chrome.runtime.lastError) {
+        console.error('스크립트 주입 실패:', chrome.runtime.lastError);
+        showSimpleNotification('클립보드 복사 실패', '스크립트 주입에 실패했습니다.');
+        return;
+      }
+      
+      if (!results || !results[0]) {
+        console.error('스크립트 실행 결과 없음');
+        showSimpleNotification('클립보드 복사 실패', '스크립트 실행 결과를 받지 못했습니다.');
+        return;
+      }
+      
+      const result = results[0].result;
+      console.log('클립보드 복사 결과:', result);
+      
+      if (result && result.success) {
+        console.log(`클립보드 복사 성공 (${result.method}):`, text);
+        showClipboardNotification(text);
+      } else {
+        console.error('클립보드 복사 실패:', result?.error || 'Unknown error');
+        showSimpleNotification('클립보드 복사 실패', result?.error || '알 수 없는 오류가 발생했습니다.');
+      }
+    });
+  });
+}
+
+// 간단한 알림 표시
+function showSimpleNotification(title, message) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icon48.png',
+    title: title,
+    message: message
+  }, (notificationId) => {
+    setTimeout(() => {
+      chrome.notifications.clear(notificationId);
+    }, 4000);
   });
 }
 
