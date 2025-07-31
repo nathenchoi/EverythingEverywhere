@@ -4,44 +4,167 @@
   <meta charset="UTF-8">
   <style>
     body {
-      width: 300px;
-      padding: 10px;
+      width: 400px;
+      padding: 15px;
       font-family: Arial, sans-serif;
+      margin: 0;
     }
     h1 {
       font-size: 18px;
       margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
     .status {
       padding: 10px;
       border-radius: 5px;
       margin: 10px 0;
+      font-size: 14px;
     }
     .status.active {
       background-color: #d4edda;
       color: #155724;
+      border: 1px solid #c3e6cb;
     }
     .status.error {
       background-color: #f8d7da;
       color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .status.warning {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
     }
     .info {
       font-size: 12px;
       color: #666;
-      margin-top: 10px;
+      margin: 10px 0;
+      line-height: 1.4;
+    }
+    .settings-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .settings-section h3 {
+      font-size: 14px;
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+    .path-input-group {
+      display: flex;
+      gap: 5px;
+      margin: 10px 0;
+    }
+    .path-input {
+      flex: 1;
+      padding: 6px 8px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background-color 0.2s;
+    }
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background-color: #545b62;
+    }
+    .path-info {
+      font-size: 11px;
+      color: #666;
+      margin-top: 5px;
+      font-family: monospace;
+    }
+    .hidden {
+      display: none;
+    }
+    .suggestions {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 3px;
+      padding: 8px;
+      margin-top: 8px;
+      font-size: 11px;
+    }
+    .suggestions h4 {
+      margin: 0 0 5px 0;
+      font-size: 12px;
+      color: #495057;
+    }
+    .suggestion-path {
+      font-family: monospace;
+      background: white;
+      padding: 3px 6px;
+      margin: 2px 0;
+      border-radius: 2px;
+      cursor: pointer;
+      border: 1px solid #e0e0e0;
+    }
+    .suggestion-path:hover {
+      background: #e9ecef;
     }
   </style>
 </head>
 <body>
-  <h1>🔍 EverythingEverywhere</h1>
+  <h1>
+    🔍 EverythingEverywhere
+    <button id="settingsToggle" class="btn btn-secondary" style="margin-left: auto; font-size: 11px;">설정</button>
+  </h1>
+  
   <div id="status" class="status">
     상태 확인 중...
   </div>
+  
+  <div id="pathInfo" class="path-info hidden"></div>
+  
   <div class="info">
     텍스트를 선택하고 우클릭하여<br>
     "로컬에서 Everything으로 검색하기"를<br>
     선택하세요.
   </div>
+  
+  <div id="settingsSection" class="settings-section hidden">
+    <h3>⚙️ Everything 경로 설정</h3>
+    
+    <div class="path-input-group">
+      <input type="text" id="pathInput" class="path-input" 
+             placeholder="Everything.exe 전체 경로를 입력하세요">
+      <button id="testBtn" class="btn btn-secondary">테스트</button>
+      <button id="saveBtn" class="btn btn-primary">저장</button>
+    </div>
+    
+    <div id="pathValidation" class="info hidden"></div>
+    
+    <div id="suggestions" class="suggestions hidden">
+      <h4>💡 추천 경로:</h4>
+      <div id="suggestionsList"></div>
+    </div>
+    
+    <div class="info">
+      Everything.exe가 자동으로 찾아지지 않는 경우,<br>
+      직접 경로를 설정할 수 있습니다.
+    </div>
+  </div>
+  
   <script src="popup.js"></script>
 </body>
 </html>
