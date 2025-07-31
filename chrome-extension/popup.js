@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const pathValidation = document.getElementById('pathValidation');
   const suggestions = document.getElementById('suggestions');
   const suggestionsList = document.getElementById('suggestionsList');
+  const copyToClipboardCheckbox = document.getElementById('copyToClipboard');
 
   let currentStatus = null;
 
@@ -85,6 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
       pathInput.value = e.target.textContent;
     }
   });
+
+  // 클립보드 설정 로드 및 저장
+  loadClipboardSetting();
+  copyToClipboardCheckbox.addEventListener('change', saveClipboardSetting);
 
   function checkEverythingStatus() {
     statusDiv.textContent = '상태 확인 중...';
@@ -164,5 +169,29 @@ document.addEventListener('DOMContentLoaded', () => {
         callback({ success: false, error: 'Native messaging failed' });
       }
     }
+  }
+
+  // 클립보드 설정 로드
+  function loadClipboardSetting() {
+    chrome.storage.sync.get(['copyToClipboard'], (result) => {
+      // 기본값은 true (활성화)
+      const enabled = result.copyToClipboard !== undefined ? result.copyToClipboard : true;
+      copyToClipboardCheckbox.checked = enabled;
+    });
+  }
+
+  // 클립보드 설정 저장
+  function saveClipboardSetting() {
+    const enabled = copyToClipboardCheckbox.checked;
+    chrome.storage.sync.set({ copyToClipboard: enabled }, () => {
+      console.log('클립보드 설정 저장:', enabled);
+      
+      // 설정 변경 알림
+      const message = enabled ? 
+        '클립보드 복사 기능이 활성화되었습니다.' : 
+        '클립보드 복사 기능이 비활성화되었습니다.';
+      
+      showValidation(message, 'success');
+    });
   }
 });
